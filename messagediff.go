@@ -9,6 +9,10 @@ import (
 	"unsafe"
 )
 
+type Different struct {
+	From, To interface{}
+}
+
 // PrettyDiff does a deep comparison and returns the nicely formated results.
 // See DeepDiff for more details.
 func PrettyDiff(a, b interface{}, options ...Option) (string, bool) {
@@ -21,7 +25,8 @@ func PrettyDiff(a, b interface{}, options ...Option) (string, bool) {
 		dstr = append(dstr, fmt.Sprintf("removed: %s = %#v\n", path.String(), removed))
 	}
 	for path, modified := range d.Modified {
-		dstr = append(dstr, fmt.Sprintf("modified: %s = %#v\n", path.String(), modified))
+		d := modified.(*Different)
+		dstr = append(dstr, fmt.Sprintf("modified: %s, from = %#v; to = %#v\n", path.String(), d.From, d.To))
 	}
 	sort.Strings(dstr)
 	return strings.Join(dstr, ""), equal
@@ -61,12 +66,12 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		d.Modified[&localPath] = nil
 		return false
 	} else if !aVal.IsValid() {
-		d.Modified[&localPath] = bVal.Interface()
+		d.Modified[&localPath] = &Different{nil, bVal.Interface()}
 		return false
 	}
 
 	if aVal.Type() != bVal.Type() {
-		d.Modified[&localPath] = bVal.Interface()
+		d.Modified[&localPath] = &Different{aVal.Interface(), bVal.Interface()}
 		return false
 	}
 	kind := aVal.Kind()
@@ -108,7 +113,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 			return true
 		}
 		if aVal.IsNil() || bVal.IsNil() {
-			d.Modified[&localPath] = bVal.Interface()
+			d.Modified[&localPath] = &Different{aVal.Interface(), bVal.Interface()}
 			return false
 		}
 	}
@@ -164,7 +169,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 			aTime := aVal.Interface().(time.Time)
 			bTime := bVal.Interface().(time.Time)
 			if !aTime.Equal(bTime) {
-				d.Modified[&localPath] = bVal.Interface().(time.Time).String()
+				d.Modified[&localPath] = &Different{aVal.Interface().(time.Time).String(), bVal.Interface().(time.Time).String()}
 				equal = false
 			}
 		} else {
@@ -191,7 +196,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		if reflect.DeepEqual(aVal.Interface(), bVal.Interface()) {
 			equal = true
 		} else {
-			d.Modified[&localPath] = bVal.Interface()
+			d.Modified[&localPath] = &Different{aVal.Interface(), bVal.Interface()}
 			equal = false
 		}
 	}
