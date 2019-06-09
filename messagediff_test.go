@@ -125,6 +125,30 @@ func TestPrettyDiff(t *testing.T) {
 			true,
 		},
 		{
+			[]byte{},
+			[]byte{},
+			"",
+			true,
+		},
+		{
+			[]byte{1,2,3,4,5},
+			[]byte{1,2,3,4,5},
+			"",
+			true,
+		},
+		{
+			[]byte{1,2,3,4,5},
+			[]byte{1,2,3,4,5,6,7},
+			"modified bytes: \nfrom = 0102030405\n  to = 01020304050607\n",
+			false,
+		},
+		{
+			[]byte{1,2,3,4,5,6,7},
+			[]byte{1,2,3,4,5},
+			"modified bytes: \nfrom = 01020304050607\n  to = 0102030405\n",
+			false,
+		},
+		{
 			unsafeTestStruct{10, "duck"},
 			unsafeTestStruct{20, "foo"},
 			"modified: .a, from = 10; to = 20\nmodified: .b, from = \"duck\"; to = \"foo\"\n",

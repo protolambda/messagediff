@@ -13,6 +13,10 @@ type Different struct {
 	From, To interface{}
 }
 
+type BytesDifferent struct {
+	From, To interface{}
+}
+
 // PrettyDiff does a deep comparison and returns the nicely formated results.
 // See DeepDiff for more details.
 func PrettyDiff(a, b interface{}, options ...Option) (string, bool) {
@@ -25,8 +29,11 @@ func PrettyDiff(a, b interface{}, options ...Option) (string, bool) {
 		dstr = append(dstr, fmt.Sprintf("removed: %s = %#v\n", path.String(), removed))
 	}
 	for path, modified := range d.Modified {
-		d := modified.(*Different)
-		dstr = append(dstr, fmt.Sprintf("modified: %s, from = %#v; to = %#v\n", path.String(), d.From, d.To))
+		if d, ok := modified.(*Different); ok {
+			dstr = append(dstr, fmt.Sprintf("modified: %s, from = %#v; to = %#v\n", path.String(), d.From, d.To))
+		} else if d, ok := modified.(*BytesDifferent); ok {
+			dstr = append(dstr, fmt.Sprintf("modified bytes: %s\nfrom = %x\n  to = %x\n", path.String(), d.From, d.To))
+		}
 	}
 	sort.Strings(dstr)
 	return strings.Join(dstr, ""), equal
@@ -122,23 +129,38 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 	case reflect.Array, reflect.Slice:
 		aLen := aVal.Len()
 		bLen := bVal.Len()
-		for i := 0; i < min(aLen, bLen); i++ {
-			localPath := append(localPath, SliceIndex(i))
-			if eq := d.diff(aVal.Index(i), bVal.Index(i), localPath, opts); !eq {
-				equal = false
+		if aVal.Type().Elem().Kind() == reflect.Uint8 {
+			if aLen != bLen {
+				d.Modified[&localPath] = &BytesDifferent{From: aVal.Interface(), To: bVal.Interface()}
+				return false
+			} else {
+				for i := 0; i < aLen; i++ {
+					if aVal.Index(i).Interface() != bVal.Index(i).Interface() {
+						d.Modified[&localPath] = &BytesDifferent{From: aVal.Interface(), To: bVal.Interface()}
+						return false
+					}
+				}
+				return true
 			}
-		}
-		if aLen > bLen {
-			for i := bLen; i < aLen; i++ {
+		} else {
+			for i := 0; i < min(aLen, bLen); i++ {
 				localPath := append(localPath, SliceIndex(i))
-				d.Removed[&localPath] = aVal.Index(i).Interface()
-				equal = false
+				if eq := d.diff(aVal.Index(i), bVal.Index(i), localPath, opts); !eq {
+					equal = false
+				}
 			}
-		} else if aLen < bLen {
-			for i := aLen; i < bLen; i++ {
-				localPath := append(localPath, SliceIndex(i))
-				d.Added[&localPath] = bVal.Index(i).Interface()
-				equal = false
+			if aLen > bLen {
+				for i := bLen; i < aLen; i++ {
+					localPath := append(localPath, SliceIndex(i))
+					d.Removed[&localPath] = aVal.Index(i).Interface()
+					equal = false
+				}
+			} else if aLen < bLen {
+				for i := aLen; i < bLen; i++ {
+					localPath := append(localPath, SliceIndex(i))
+					d.Added[&localPath] = bVal.Index(i).Interface()
+					equal = false
+				}
 			}
 		}
 	case reflect.Map:

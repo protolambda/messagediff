@@ -1,3 +1,6 @@
+## v2.1.0
+* Byte arrays/slices are formatted in hex now, 1 diff element instead of per-byte.
+
 ## v2.0.0
 * Added support for ignoring the difference of an empty slice and nil slice.
 * Fork, go-module now
