@@ -130,13 +130,22 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		aLen := aVal.Len()
 		bLen := bVal.Len()
 		if aVal.Type().Elem().Kind() == reflect.Uint8 {
+			a := aVal.Interface()
+			b := bVal.Interface()
+			if kind == reflect.Array {
+				if a != b {
+					d.Modified[&localPath] = &BytesDifferent{From: a, To: b}
+					return false
+				}
+				return true
+			}
 			if aLen != bLen {
-				d.Modified[&localPath] = &BytesDifferent{From: aVal.Interface(), To: bVal.Interface()}
+				d.Modified[&localPath] = &BytesDifferent{From: a, To: b}
 				return false
 			} else {
 				for i := 0; i < aLen; i++ {
 					if aVal.Index(i).Interface() != bVal.Index(i).Interface() {
-						d.Modified[&localPath] = &BytesDifferent{From: aVal.Interface(), To: bVal.Interface()}
+						d.Modified[&localPath] = &BytesDifferent{From: a, To: b}
 						return false
 					}
 				}

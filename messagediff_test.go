@@ -131,6 +131,18 @@ func TestPrettyDiff(t *testing.T) {
 			true,
 		},
 		{
+			[3]byte{1,2,3},
+			[3]byte{1,2,3},
+			"",
+			true,
+		},
+		{
+			[3]byte{1,2,3},
+			[3]byte{1,2,0},
+			"modified bytes: \nfrom = 010203\n  to = 010200\n",
+			false,
+		},
+		{
 			[]byte{1,2,3,4,5},
 			[]byte{1,2,3,4,5},
 			"",

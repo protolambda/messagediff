@@ -1,3 +1,6 @@
+## v2.1.1
+* No per-element reflection for diffing byte arrays 
+
 ## v2.1.0
 * Byte arrays/slices are formatted in hex now, 1 diff element instead of per-byte.
 
