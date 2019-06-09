@@ -3,10 +3,12 @@ package messagediff
 import (
 	"testing"
 	"time"
-
-	"github.com/d4l3k/messagediff/testdata"
 )
 
+type unsafeTestStruct struct {
+	a int
+	b string
+}
 type testStruct struct {
 	A, b int
 	C    []int
@@ -53,13 +55,13 @@ func TestPrettyDiff(t *testing.T) {
 		{
 			true,
 			false,
-			"modified:  = false\n",
+			"modified: , from = true; to = false\n",
 			false,
 		},
 		{
 			true,
 			0,
-			"modified:  = 0\n",
+			"modified: , from = true; to = 0\n",
 			false,
 		},
 		{
@@ -77,25 +79,25 @@ func TestPrettyDiff(t *testing.T) {
 		{
 			[]int{0},
 			[]int{1},
-			"modified: [0] = 1\n",
+			"modified: [0], from = 0; to = 1\n",
 			false,
 		},
 		{
 			&[]int{0},
 			&[]int{1},
-			"modified: [0] = 1\n",
+			"modified: [0], from = 0; to = 1\n",
 			false,
 		},
 		{
 			map[string]int{"a": 1, "b": 2},
 			map[string]int{"b": 4, "c": 3},
-			"added: [\"c\"] = 3\nmodified: [\"b\"] = 4\nremoved: [\"a\"] = 1\n",
+			"added: [\"c\"] = 3\nmodified: [\"b\"], from = 2; to = 4\nremoved: [\"a\"] = 1\n",
 			false,
 		},
 		{
 			testStruct{1, 2, []int{1}, [3]int{4, 5, 6}},
 			testStruct{1, 3, []int{1, 2}, [3]int{4, 5, 6}},
-			"added: .C[1] = 2\nmodified: .b = 3\n",
+			"added: .C[1] = 2\nmodified: .b, from = 2; to = 3\n",
 			false,
 		},
 		{
@@ -107,13 +109,13 @@ func TestPrettyDiff(t *testing.T) {
 		{
 			&struct{}{},
 			nil,
-			"modified:  = <nil>\n",
+			"modified: , from = &struct {}{}; to = <nil>\n",
 			false,
 		},
 		{
 			nil,
 			&struct{}{},
-			"modified:  = &struct {}{}\n",
+			"modified: , from = <nil>; to = &struct {}{}\n",
 			false,
 		},
 		{
@@ -123,9 +125,9 @@ func TestPrettyDiff(t *testing.T) {
 			true,
 		},
 		{
-			testdata.MakeTest(10, "duck"),
-			testdata.MakeTest(20, "foo"),
-			"modified: .a = 20\nmodified: .b = \"foo\"\n",
+			unsafeTestStruct{10, "duck"},
+			unsafeTestStruct{20, "foo"},
+			"modified: .a, from = 10; to = 20\nmodified: .b, from = \"duck\"; to = \"foo\"\n",
 			false,
 		},
 		{
@@ -137,7 +139,7 @@ func TestPrettyDiff(t *testing.T) {
 		{
 			time.Date(2017, 1, 1, 0, 0, 0, 0, &time.Location{}),
 			time.Date(2018, 7, 24, 14, 06, 59, 0, time.UTC),
-			"modified:  = \"2018-07-24 14:06:59 +0000 UTC\"\n",
+			"modified: , from = \"2017-01-01 00:00:00 +0000 UTC\"; to = \"2018-07-24 14:06:59 +0000 UTC\"\n",
 			false,
 		},
 	}
@@ -155,7 +157,7 @@ func TestPrettyDiffRecursive(t *testing.T) {
 		{
 			newRecursiveStruct(1),
 			newRecursiveStruct(2),
-			"modified: .Child.Key = 2\nmodified: .Key = 2\n",
+			"modified: .Child.Key, from = 1; to = 2\nmodified: .Key, from = 1; to = 2\n",
 			false,
 		},
 	}
@@ -198,7 +200,32 @@ func TestIgnoreTag(t *testing.T) {
 	if equal {
 		t.Errorf("Expected structs NOT to be equal.")
 	}
-	expect := "modified: .a = 2\nmodified: .b[1] = 9\n"
+	expect := "modified: .a, from = 1; to = 2\nmodified: .b[1], from = 5; to = 9\n"
+	if diff != expect {
+		t.Errorf("Expected diff to be:\n%v\nbut got:\n%v", expect, diff)
+	}
+}
+
+func TestSliceWeakEmptyOption(t *testing.T) {
+	a := struct {
+		X []byte
+	}{
+		X: make([]byte, 0, 10),
+	}
+	b := struct {
+		X []byte
+	}{}
+
+	diff, equal := PrettyDiff(a, b, SliceWeakEmptyOption{})
+	if !equal {
+		t.Errorf("Expected structs to be equal. Diff:\n%s", diff)
+	}
+
+	diff, equal = PrettyDiff(a, b)
+	if equal {
+		t.Errorf("Expected structs NOT to be equal.")
+	}
+	expect := "modified: .X, from = []byte{}; to = []byte(nil)\n"
 	if diff != expect {
 		t.Errorf("Expected diff to be:\n%v\nbut got:\n%v", expect, diff)
 	}
@@ -229,7 +256,7 @@ func TestIgnoreStructFieldOption(t *testing.T) {
 	if equal {
 		t.Errorf("Expected structs NOT to be equal.")
 	}
-	expect := "modified: .X = \"xx\"\n"
+	expect := "modified: .X, from = \"x\"; to = \"xx\"\n"
 	if diff != expect {
 		t.Errorf("Expected diff to be:\n%v\nbut got:\n%v", expect, diff)
 	}

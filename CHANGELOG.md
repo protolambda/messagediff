@@ -1,5 +1,7 @@
-## nightly
+## v1.2.0
 * Added support for ignoring fields.
+* Added support for ignoring the difference of an empty slice and nil slice.
+* Fork, go-module now
 
 ## v1.1.0
 

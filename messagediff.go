@@ -63,7 +63,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		return true
 	}
 	if !bVal.IsValid() {
-		d.Modified[&localPath] = nil
+		d.Modified[&localPath] = &Different{aVal.Interface(), nil}
 		return false
 	} else if !aVal.IsValid() {
 		d.Modified[&localPath] = &Different{nil, bVal.Interface()}
@@ -112,7 +112,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		if aVal.IsNil() && bVal.IsNil() {
 			return true
 		}
-		if aVal.IsNil() || bVal.IsNil() {
+		if (aVal.IsNil() || bVal.IsNil()) && (kind != reflect.Slice || !opts.sliceWeakEmpty){
 			d.Modified[&localPath] = &Different{aVal.Interface(), bVal.Interface()}
 			return false
 		}
@@ -268,6 +268,8 @@ func (n SliceIndex) String() string {
 
 type opts struct {
 	ignoreField map[string]struct{}
+	// if true, nil slices are deemed equal to zero-length slices.
+	sliceWeakEmpty bool
 }
 
 // Option is an option to specify in diff
@@ -292,4 +294,10 @@ func (i IgnoreFieldOption) apply(opts *opts) {
 		opts.ignoreField = map[string]struct{}{}
 	}
 	opts.ignoreField[i.Field] = struct{}{}
+}
+
+type SliceWeakEmptyOption struct {}
+
+func (v SliceWeakEmptyOption) apply(opts *opts) {
+	opts.sliceWeakEmpty = true
 }
