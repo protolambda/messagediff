@@ -1,3 +1,6 @@
+## v2.1.2
+* Add explicit empty `go.sum` file, no dependencies, yay
+
 ## v2.1.1
 * No per-element reflection for diffing byte arrays 
 
