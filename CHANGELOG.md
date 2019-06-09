@@ -1,13 +1,7 @@
-## v2.1.2
+## v1.3.0
 * Add explicit empty `go.sum` file, no dependencies, yay
-
-## v2.1.1
 * No per-element reflection for diffing byte arrays 
-
-## v2.1.0
 * Byte arrays/slices are formatted in hex now, 1 diff element instead of per-byte.
-
-## v2.0.0
 * Added support for ignoring the difference of an empty slice and nil slice.
 * Fork, go-module now
 
