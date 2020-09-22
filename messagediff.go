@@ -32,7 +32,19 @@ func PrettyDiff(a, b interface{}, options ...Option) (string, bool) {
 		if d, ok := modified.(*Different); ok {
 			dstr = append(dstr, fmt.Sprintf("modified: %s, from = %#v; to = %#v\n", path.String(), d.From, d.To))
 		} else if d, ok := modified.(*BytesDifferent); ok {
-			dstr = append(dstr, fmt.Sprintf("modified bytes: %s\nfrom = %x\n  to = %x\n", path.String(), d.From, d.To))
+			var fromV string
+			if v, ok := d.From.(fmt.Stringer); ok {
+				fromV = v.String()
+			} else {
+				fromV = fmt.Sprintf("%x", d.From)
+			}
+			var toV string
+			if v, ok := d.To.(fmt.Stringer); ok {
+				toV = v.String()
+			} else {
+				toV = fmt.Sprintf("%x", d.To)
+			}
+			dstr = append(dstr, fmt.Sprintf("modified bytes: %s\nfrom = %s\n  to = %s\n", path.String(), fromV, toV))
 		}
 	}
 	sort.Strings(dstr)
@@ -119,7 +131,7 @@ func (d *Diff) diff(aVal, bVal reflect.Value, path Path, opts *opts) bool {
 		if aVal.IsNil() && bVal.IsNil() {
 			return true
 		}
-		if (aVal.IsNil() || bVal.IsNil()) && (kind != reflect.Slice || !opts.sliceWeakEmpty){
+		if (aVal.IsNil() || bVal.IsNil()) && (kind != reflect.Slice || !opts.sliceWeakEmpty) {
 			d.Modified[&localPath] = &Different{aVal.Interface(), bVal.Interface()}
 			return false
 		}
@@ -327,7 +339,7 @@ func (i IgnoreFieldOption) apply(opts *opts) {
 	opts.ignoreField[i.Field] = struct{}{}
 }
 
-type SliceWeakEmptyOption struct {}
+type SliceWeakEmptyOption struct{}
 
 func (v SliceWeakEmptyOption) apply(opts *opts) {
 	opts.sliceWeakEmpty = true
